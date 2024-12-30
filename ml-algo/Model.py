@@ -3,6 +3,7 @@ from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
+import joblib
 
 # Load and preprocess data
 data = pd.read_csv('CardiacPatientData.csv')
@@ -24,3 +25,6 @@ model.fit(X_train, y_train)
 predictions = model.predict(X_test)
 print(X_standardized)
 print("Accuracy:", accuracy_score(y_test, predictions))
+
+joblib.dump(model, 'model.pkl')
+print("Model saved as 'model.pkl'")
