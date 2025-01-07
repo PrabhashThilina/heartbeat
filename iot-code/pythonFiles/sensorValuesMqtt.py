@@ -1,4 +1,5 @@
 import time
+import requests
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_MCP3008
 import paho.mqtt.client as mqtt
@@ -17,6 +18,28 @@ TOPIC = "sensor/heart_rate"
 client = mqtt.Client()
 client.connect(BROKER, PORT, 60)
 
+print('Reading temerature  values from API')
+API_URL = "http://127.0.0.1:5000/api/data/BT"
+APIIndex = 0
+
+# Fetch Body Tempreature from API
+def fetchAPIValue():
+    try:
+        response = requests.get(API_URL)
+        response.raise_for_status()
+        data = response.json()  # Assuming the API returns a JSON array of v>
+        if 'BT' in data:
+            return data['BT'][APIIndex] if len(data['BT']) > APIIndex else 'N/A'
+        return 'N/A'
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from API: {e}")
+        return 'N/A'
+
+
+# Reading the MCP3008 analog input in channel 0
+print('Reading MCP3008 values, press Ctrl-C to quit...')
+ADC0 = ('| {0:>4} |'.format(*range(1)))
+
 print('Reading MCP3008 values and publishing to MQTT, press Ctrl-C to quit...')
 
 # Main program loop
@@ -27,17 +50,22 @@ try:
         for i in range(1):
             # Read the value of the specified channel (0)
             values[i] = mcp.read_adc(i)
-        
         # Extract and process the raw value
         raw_value = int(values[0])
-        adjusted_value = raw_value - 935
+        adjusted_value = raw_value - 966
+
+        # Fetch API value
+        api_value = fetchAPIValue()
 
         # Print the values to the console
-        print(f"Value From Channel 0: {raw_value} | Adjusted Value: {abs(adjusted_value)}")
+        print(f"Value From Channel {0:>4}: ADC Raw = {abs(raw_value)} | ADC Adjusted = {abs(adjusted_value)} | API Value = {api_value}")
 
         # Publish the raw and adjusted values to MQTT
-        client.publish(TOPIC, f"Raw: {raw_value}, Adjusted: {abs(adjusted_value)}")
+        client.publish(TOPIC, f"Raw: {raw_value}, Adjusted: {abs(adjusted_value)}, Temperature: {api_value} ")
         print(f"Published to MQTT: Raw: {raw_value}, Adjusted: {abs(adjusted_value)}")
+
+        # Increment the index
+        APIIndex += 1
 
         # Pause for half a second
         time.sleep(0.5)
