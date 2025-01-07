@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score
 import joblib
 
 # Load and preprocess data
-data = pd.read_csv('CardiacPatientData.csv')
+data = pd.read_csv('../iot-code/datasets/CardiacPatientData.csv')
 X = data[["HR", "BT", "Age", "Smoke", "FHCD"]]
 y = data["Outcome"]  # Replace "target" with your actual target column
 

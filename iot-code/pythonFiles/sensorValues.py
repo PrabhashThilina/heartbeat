@@ -1,5 +1,7 @@
 import time
 import requests
+import joblib
+import numpy as np
 
 # Import SPI library (for hardware SPI) and MCP3008 library
 import Adafruit_GPIO.SPI as SPI
@@ -40,6 +42,22 @@ def fetchAPIValue():
         return 'N/A'
 
 
+# Predict Health Status 
+def predictHealthStatus(HR, BT, Age, Smoke, FHCD):
+    # Load the trained model
+    model = joblib.load('../../ml-algo/model.pkl')
+    while True:
+        # Input data for prediction (raw values, no standardization)
+        input_data = np.array([[HR, BT, Age, Smoke, FHCD]])  # HR, BT, Age, Smoke, FHCD
+
+        # Make prediction
+        outcome = model.predict(input_data)
+        return outcome
+
+        # Wait for 30 seconds before the next prediction
+        # time.sleep(30)
+
+
 # Reading the MCP3008 analog input in channel 0
 print('Reading MCP3008 values, press Ctrl-C to quit...')
 ADC0 = ('| {0:>4} |'.format(*range(1)))
@@ -58,9 +76,12 @@ while True:
     
     # Fetch API value
     APIValues = fetchAPIValue()
+
+    # Health Status 
+    healthStatus = predictHealthStatus(62, 92, 55, 1, 0)
     
     # Display results
-    print(f"Value From Channel {0:>4}: ADC Raw = {abs(rawValue)} | ADC Adjusted = {abs(adjustedValue)} | API Value = {APIValues}")
+    print(f"Value From Channel {0:>4}: ADC Raw = {abs(rawValue)} | ADC Adjusted = {abs(adjustedValue)} | API Value = {APIValues} | Health Status = {healthStatus}")
     
     # Increment the index
     APIIndex += 1

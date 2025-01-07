@@ -1,7 +1,12 @@
 import time
 import requests
+import joblib
+import numpy as np
+
+# Import SPI library (for hardware SPI) and MCP3008 library
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_MCP3008
+
 import paho.mqtt.client as mqtt
 
 # Hardware SPI configuration
@@ -36,6 +41,22 @@ def fetchAPIValue():
         return 'N/A'
 
 
+# Predict Health Status 
+def predictHealthStatus(HR, BT, Age, Smoke, FHCD):
+    # Load the trained model
+    model = joblib.load('../../ml-algo/model.pkl')
+    while True:
+        # Input data for prediction (raw values, no standardization)
+        input_data = np.array([[HR, BT, Age, Smoke, FHCD]])  # HR, BT, Age, Smoke, FHCD
+
+        # Make prediction
+        outcome = model.predict(input_data)
+        return outcome
+
+        # Wait for 30 seconds before the next prediction
+        # time.sleep(30)
+
+
 # Reading the MCP3008 analog input in channel 0
 print('Reading MCP3008 values, press Ctrl-C to quit...')
 ADC0 = ('| {0:>4} |'.format(*range(1)))
@@ -46,28 +67,32 @@ print('Reading MCP3008 values and publishing to MQTT, press Ctrl-C to quit...')
 try:
     while True:
         # Read the 0th ADC channel values
-        values = [0] * 1
+        values = [0]*1
         for i in range(1):
-            # Read the value of the specified channel (0)
+            # The read_adc function will get the value of the specified channel (0)
             values[i] = mcp.read_adc(i)
-        # Extract and process the raw value
-        raw_value = int(values[0])
-        adjusted_value = raw_value - 966
+        # Print the ADC values.
+        rawValue = ('{0:>4}'.format(*values))
+        rawValue = int(rawValue)
+        adjustedValue = rawValue - 966 # Raw Value
+        
+        # Fetch API value
+        APIValues = fetchAPIValue()
 
-	# Fetch API value
-        api_value = fetchAPIValue()
+        # Health Status 
+        healthStatus = predictHealthStatus(62, 92, 55, 1, 0)
 
-        # Print the values to the console
-        print(f"Value From Channel {0:>4}: ADC Raw = {abs(raw_value)} | ADC Adjusted = {abs(adjusted_value)} | API Value = {api_value}")
- 
+        # Display results
+        print(f"Value From Channel {0:>4}: ADC Raw = {abs(rawValue)} | ADC Adjusted = {abs(adjustedValue)} | API Value = {APIValues} | Health Status = {healthStatus}")
+    
         # Publish the raw and adjusted values to MQTT
-        client.publish(TOPIC, f"{raw_value},{abs(adjusted_value)},{api_value} ")
-        print(f"Published to MQTT: Raw: {raw_value}, Adjusted: {abs(adjusted_value)}")
+        client.publish(TOPIC, f"{rawValue},{abs(adjustedValue)},{APIValues},{healthStatus} ")
+        print(f"Published to MQTT: Raw: {rawValue}, Adjusted: {abs(adjustedValue)}, Health Status: {healthStatus}")
 
-	# Increment the index
+	    # Increment the index
         APIIndex += 1
 
-        # Pause for half a second
+        # Pause for half a second.
         time.sleep(0.5)
 
 except KeyboardInterrupt:
