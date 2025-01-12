@@ -83,31 +83,58 @@ public class MainActivity extends AppCompatActivity {
         EditText nameField = findViewById(R.id.nameField);
         EditText ageField = findViewById(R.id.ageField);
         EditText sysBPField = findViewById(R.id.sysBPField);
+        EditText diaBPField = findViewById(R.id.diaBPField);
         EditText sodiumField = findViewById(R.id.sodiumField);
         EditText creatinineField = findViewById(R.id.creatinineField);
-        EditText potasiumField = findViewById(R.id.potassiumField);
+        EditText potassiumField = findViewById(R.id.potassiumField);
         EditText chlorideField = findViewById(R.id.chlorideField);
+
+        connect();
 
         submitButton.setOnClickListener(v -> {
             String name = nameField.getText().toString();
             String age = ageField.getText().toString();
             String sysBP = sysBPField.getText().toString();
+            String diaBP = diaBPField.getText().toString().trim();
             String sodium = sodiumField.getText().toString();
             String creatinine = creatinineField.getText().toString();
-            String potasium = potasiumField.getText().toString();
+            String potassium = potassiumField.getText().toString();
             String chloride = chlorideField.getText().toString();
 
             boolean isComplete = !name.isEmpty() && !age.isEmpty() && !sysBP.isEmpty() && !sodium.isEmpty()
-                    && !creatinine.isEmpty() && !potasium.isEmpty() && !chloride.isEmpty();
+                    && !creatinine.isEmpty() && !potassium.isEmpty() && !chloride.isEmpty();
 
             if (isComplete) {
                 // Proceed to the dashboard
-                loadDashboard();
+                String data = String.format(
+                        "{\"name\":\"%s\",\"age\":\"%s\",\"sysBP\":\"%s\",\"diaBP\":\"%s\",\"creatinine\":\"%s\",\"sodium\":\"%s\",\"potassium\":\"%s\",\"chloride\":\"%s\"}",
+                        name, age, sysBP, diaBP, creatinine, sodium, potassium, chloride
+                );
+
+                publishData(data); // Publish data to MQTT
+
+                Toast.makeText(this, "Data submitted and published!", Toast.LENGTH_SHORT).show();
+                loadDashboard(); // Navigate to the dashboard
             } else {
                 Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             }
         });
 
+    }
+
+    private void publishData(String data) {
+        if (client != null && client.isConnected()) {
+            try {
+                MqttMessage message = new MqttMessage();
+                message.setPayload(data.getBytes());
+                message.setQos(1); // Set Quality of Service level
+                client.publish("health_monitor/data", message); // Topic to publish
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
+        } else {
+            Toast.makeText(this, "MQTT client is not connected", Toast.LENGTH_SHORT).show();
+        }
     }
     private void loadDashboard(){
 
