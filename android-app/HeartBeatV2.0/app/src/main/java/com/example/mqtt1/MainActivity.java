@@ -3,17 +3,12 @@ package com.example.mqtt1;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.jjoe64.graphview.GraphView;
@@ -29,56 +24,63 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-import java.time.LocalTime;
-
 public class MainActivity extends AppCompatActivity {
-    private MqttAndroidClient client;
-    private static final String SERVER_URI = "tcp://192.168.1.9:1883";
-    private static final String TAG = "MainActivity";
-    private TextView txv_rgb;
-    private TextView txt_bodyTemp;
 
-    private LineGraphSeries<DataPoint> pulseSeries;
+    // Activity name
+    private static final String TAG = "MainActivity";
+
+    // MQTT client and broker details
+    private MqttAndroidClient mqttClient;
+    private static final String SERVER_URI = "tcp://192.168.1.9:1883";
+
+    // UI components
+    private TextView heartRateTextView;
+    private TextView bodyTempTextView;
+    private LineGraphSeries<DataPoint> heartPulseGraphSeries;
     private LineGraphSeries<DataPoint> tempSeries;
-    private double lastXValue = 0;
+
+    // Graph data
+    private double graphLastX = 0;
     private double heartRate = 100;
     private double bodyTemp = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_splash);
+        EdgeToEdge.enable(this);// Edge to edge content rendering
+        setContentView(R.layout.activity_splash);//Display splash screen
 
+        // Switch to login page with a splash screen
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
-
-        // Delay and switch to the main content layout
         new Handler().postDelayed(() -> {
 
             setContentView(R.layout.activity_login);
 
+            // Bind login page UI components
             MaterialButton loginButton = findViewById(R.id.loginButton);
             EditText usernameField = findViewById(R.id.usernameField);
             EditText passwordField = findViewById(R.id.passwordField);
 
+            // Handle login button click
             loginButton.setOnClickListener(v -> {
                 String username = usernameField.getText().toString();
                 String password = passwordField.getText().toString();
 
+                // Validate user credentials
                 if (username.equals("admin") && password.equals("1234")) {
-                    // Step 3: Transition to Main App Layout
                     loadData();
                 } else {
                     Toast.makeText(this, "Invalid credentials", Toast.LENGTH_SHORT).show();
                 }
             });
-        }, 3000);
+        }, 3000);//Delay of three seconds
     }
 
+    // Load patient data page
     private void loadData(){
+        setContentView(R.layout.activity_data);// Display patient data page
 
-        setContentView(R.layout.activity_data);
-
+        // Bind patient data UI components
         MaterialButton submitButton = findViewById(R.id.submitButton);
         EditText nameField = findViewById(R.id.nameField);
         EditText ageField = findViewById(R.id.ageField);
@@ -89,9 +91,11 @@ public class MainActivity extends AppCompatActivity {
         EditText potassiumField = findViewById(R.id.potassiumField);
         EditText chlorideField = findViewById(R.id.chlorideField);
 
-        connect();
+        connect();//Connect to MQTT broker
 
+        // Handle patient data form submission
         submitButton.setOnClickListener(v -> {
+            // Get input patient input data
             String name = nameField.getText().toString();
             String age = ageField.getText().toString();
             String sysBP = sysBPField.getText().toString();
@@ -101,18 +105,18 @@ public class MainActivity extends AppCompatActivity {
             String potassium = potassiumField.getText().toString();
             String chloride = chlorideField.getText().toString();
 
+            // Check whether all the patient data are filled
             boolean isComplete = !name.isEmpty() && !age.isEmpty() && !sysBP.isEmpty() && !sodium.isEmpty()
                     && !creatinine.isEmpty() && !potassium.isEmpty() && !chloride.isEmpty();
 
             if (isComplete) {
-                // Proceed to the dashboard
+                // JSON payload for MQTT publishing
                 String data = String.format(
                         "{\"name\":\"%s\",\"age\":\"%s\",\"sysBP\":\"%s\",\"diaBP\":\"%s\",\"creatinine\":\"%s\",\"sodium\":\"%s\",\"potassium\":\"%s\",\"chloride\":\"%s\"}",
                         name, age, sysBP, diaBP, creatinine, sodium, potassium, chloride
                 );
 
                 publishData(data); // Publish data to MQTT
-
                 Toast.makeText(this, "Data submitted and published!", Toast.LENGTH_SHORT).show();
                 loadDashboard(); // Navigate to the dashboard
             } else {
@@ -122,13 +126,14 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    // Publish data to MQTT data topic
     private void publishData(String data) {
-        if (client != null && client.isConnected()) {
+        if (mqttClient != null && mqttClient.isConnected()) {
             try {
                 MqttMessage message = new MqttMessage();
                 message.setPayload(data.getBytes());
                 message.setQos(1); // Set Quality of Service level
-                client.publish("health_monitor/data", message); // Topic to publish
+                mqttClient.publish("health_monitor/data", message); // Topic to publish
             } catch (MqttException e) {
                 e.printStackTrace();
             }
@@ -136,20 +141,20 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "MQTT client is not connected", Toast.LENGTH_SHORT).show();
         }
     }
+
+    // Load dashboard screen
     private void loadDashboard(){
+        setContentView(R.layout.activity_main);// Set dashboard layout
 
-        setContentView(R.layout.activity_main);
+        // Bind dashboard UI components
+        heartRateTextView = (TextView) findViewById(R.id.txv_rgbValue);
+        bodyTempTextView = (TextView) findViewById(R.id.txv_tempValue);
 
-        txv_rgb = (TextView) findViewById(R.id.txv_rgbValue);
-        txt_bodyTemp = (TextView) findViewById(R.id.txv_tempValue);
-
-        //////////////////////
         // Initialize GraphView
         GraphView graph_heartPulse = findViewById(R.id.graph_heartPulse);
-        pulseSeries = new LineGraphSeries<>();
-        pulseSeries.setThickness(2);
-        //pulseSeries.setColor(4);
-        graph_heartPulse.addSeries(pulseSeries);
+        heartPulseGraphSeries = new LineGraphSeries<>();
+        heartPulseGraphSeries.setThickness(2);
+        graph_heartPulse.addSeries(heartPulseGraphSeries);
 
         // Enable scrolling and scaling
         graph_heartPulse.getViewport().setScalable(true);
@@ -163,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
         graph_heartPulse.getViewport().setYAxisBoundsManual(true);
         graph_heartPulse.getViewport().setMinY(0);
         graph_heartPulse.getViewport().setMaxY(200);
-        //.........................
+
         GraphView graph_bodyTemp = findViewById(R.id.graph_bodyTemp);
         tempSeries = new LineGraphSeries<>();
         graph_bodyTemp.addSeries(tempSeries);
@@ -179,13 +184,11 @@ public class MainActivity extends AppCompatActivity {
         graph_bodyTemp.getViewport().setMinY(90);
         graph_bodyTemp.getViewport().setMaxY(110);
 
-        System.out.println("Before connect");
+        connect();// Ensure connection to MQTT broker
 
-        connect();
+        updateSensorData();// Update heart rate and temperature data series
 
-        updateHearBeta();
-
-        client.setCallback(new MqttCallbackExtended() {
+        mqttClient.setCallback(new MqttCallbackExtended() {
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
 
@@ -212,15 +215,9 @@ public class MainActivity extends AppCompatActivity {
                 String[] values = newMessage.split(",");
                 heartRate = Double.parseDouble(values[1]);
                 bodyTemp = Double.parseDouble(values[2]);
-                txv_rgb.setText("         " + values[1]);
-                txt_bodyTemp.setText("          " + values[2]);
-                updateHearBeta();
-
-        /* add code here to interact with elements
-        (text views, buttons)
-        using data from newMessage
-         */
-
+                heartRateTextView.setText("         " + values[1]);
+                bodyTempTextView.setText("          " + values[2]);
+                updateSensorData();//Update heart rate and temperature data series
             }
 
             @Override
@@ -229,25 +226,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    private void connect(){
-        System.out.println("In connect");
 
+    // Establish MQTT connection
+    private void connect(){
         String clientId = MqttClient.generateClientId();
-        client = new MqttAndroidClient(this.getApplicationContext(), SERVER_URI, clientId);
+        mqttClient = new MqttAndroidClient(this.getApplicationContext(), SERVER_URI, clientId);
         try {
             System.out.println("Try connect");
             System.out.println(SERVER_URI);
-            IMqttToken token = client.connect();
+            IMqttToken token = mqttClient.connect();
             token.setActionCallback(new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-// We are connected
                     Log.d(TAG, "onSuccess");
                     System.out.println(TAG + " Success. Connected to " + SERVER_URI);
                 }
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-// Something went wrong e.g. connection timeout or firewall problems
                     Log.d(TAG, "onFailure");
                     System.out.println(TAG + " Oh no! Failed to connect to " + SERVER_URI);
                 }
@@ -258,11 +253,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //Subscribe to the MQTT topic
     private void subscribe(String topicToSubscribe) {
         final String topic = topicToSubscribe;
         int qos = 1;
         try {
-            IMqttToken subToken = client.subscribe(topic, qos);
+            IMqttToken subToken = mqttClient.subscribe(topic, qos);
             subToken.setActionCallback(new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
@@ -271,8 +267,6 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     System.out.println("Failed to subscribe to topic: " + topic);
-// The subscription could not be performed, maybe the user was not
-// authorized to subscribe on the specified topic e.g. using wildcards
                 }
             });
         } catch (MqttException e) {
@@ -280,13 +274,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateHearBeta(){
+    // Update heart rate and temperature data series
+    private void updateSensorData(){
         new Thread(() -> {
             while (true) {
                 runOnUiThread(() -> {
-                    lastXValue += 1;
-                    pulseSeries.appendData(new DataPoint(lastXValue, heartRate), true, 50);
-                    tempSeries.appendData(new DataPoint(lastXValue, bodyTemp), true, 50);
+                    graphLastX += 1;
+                    heartPulseGraphSeries.appendData(new DataPoint(graphLastX, heartRate), true, 50);
+                    tempSeries.appendData(new DataPoint(graphLastX, bodyTemp), true, 50);
                 });
 
                 try {
@@ -297,6 +292,5 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
-
 }
 
