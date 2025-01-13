@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.widget.EditText;
+import android.widget.RadioGroup;
+import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,8 +36,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String SERVER_URI = "tcp://192.168.1.9:1883";
 
     // UI components
-    private TextView heartRateTextView;
-    private TextView bodyTempTextView;
     private LineGraphSeries<DataPoint> heartPulseGraphSeries;
     private LineGraphSeries<DataPoint> tempSeries;
 
@@ -84,12 +84,8 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton submitButton = findViewById(R.id.submitButton);
         EditText nameField = findViewById(R.id.nameField);
         EditText ageField = findViewById(R.id.ageField);
-        EditText sysBPField = findViewById(R.id.sysBPField);
-        EditText diaBPField = findViewById(R.id.diaBPField);
-        EditText sodiumField = findViewById(R.id.sodiumField);
-        EditText creatinineField = findViewById(R.id.creatinineField);
-        EditText potassiumField = findViewById(R.id.potassiumField);
-        EditText chlorideField = findViewById(R.id.chlorideField);
+        RadioGroup fhihdRadioGroup = findViewById(R.id.fhihdRadioGroup);
+        RadioGroup smokingRadioGroup = findViewById(R.id.smokingRadioGroup);
 
         connect();//Connect to MQTT broker
 
@@ -98,22 +94,24 @@ public class MainActivity extends AppCompatActivity {
             // Get input patient input data
             String name = nameField.getText().toString();
             String age = ageField.getText().toString();
-            String sysBP = sysBPField.getText().toString();
-            String diaBP = diaBPField.getText().toString().trim();
-            String sodium = sodiumField.getText().toString();
-            String creatinine = creatinineField.getText().toString();
-            String potassium = potassiumField.getText().toString();
-            String chloride = chlorideField.getText().toString();
+
+            int fhihdSelectedId = fhihdRadioGroup.getCheckedRadioButtonId();
+            RadioButton fhihdSelectedRadio = findViewById(fhihdSelectedId);
+            String fhihdValue = fhihdSelectedRadio.getText().toString();
+
+// Get selected value from Smoking RadioGroup
+            int smokingSelectedId = smokingRadioGroup.getCheckedRadioButtonId();
+            RadioButton smokingSelectedRadio = findViewById(smokingSelectedId);
+            String smokingValue = smokingSelectedRadio.getText().toString();
 
             // Check whether all the patient data are filled
-            boolean isComplete = !name.isEmpty() && !age.isEmpty() && !sysBP.isEmpty() && !sodium.isEmpty()
-                    && !creatinine.isEmpty() && !potassium.isEmpty() && !chloride.isEmpty();
+            boolean isComplete = !name.isEmpty() && !age.isEmpty();
 
             if (isComplete) {
                 // JSON payload for MQTT publishing
                 String data = String.format(
-                        "{\"name\":\"%s\",\"age\":\"%s\",\"sysBP\":\"%s\",\"diaBP\":\"%s\",\"creatinine\":\"%s\",\"sodium\":\"%s\",\"potassium\":\"%s\",\"chloride\":\"%s\"}",
-                        name, age, sysBP, diaBP, creatinine, sodium, potassium, chloride
+                        "{\"name\":\"%s\",\"Age\":\"%s\",\"Smoke\":\"%s\",\"FHCD\":\"%s\"}",
+                        name, age, smokingValue, fhihdValue
                 );
 
                 publishData(data); // Publish data to MQTT
@@ -147,8 +145,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);// Set dashboard layout
 
         // Bind dashboard UI components
-        heartRateTextView = (TextView) findViewById(R.id.txv_rgbValue);
-        bodyTempTextView = (TextView) findViewById(R.id.txv_tempValue);
+        TextView heartRateTextView = (TextView) findViewById(R.id.txv_pulseValue);
+        TextView bodyTempTextView = (TextView) findViewById(R.id.txv_tempValue);
+        TextView healthStatusTextView = (TextView) findViewById(R.id.txv_statusValue);
 
         // Initialize GraphView
         GraphView graph_heartPulse = findViewById(R.id.graph_heartPulse);
@@ -217,8 +216,14 @@ public class MainActivity extends AppCompatActivity {
                 bodyTemp = Double.parseDouble(values[2]);
                 heartRateTextView.setText("         " + values[1]);
                 bodyTempTextView.setText("          " + values[2]);
+                String healthStatus = values[3];
+                if(healthStatus.equals("[]"))
+                    healthStatusTextView.setText("Normal");
+                else{
+                    healthStatusTextView.setText("Attention");
+                }
                 updateSensorData();//Update heart rate and temperature data series
-            }
+           }
 
             @Override
             public void deliveryComplete(IMqttDeliveryToken token) {
@@ -285,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
                 });
 
                 try {
-                    Thread.sleep(1000000); // Update every second
+                    Thread.sleep(5000); // Update every second
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

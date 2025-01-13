@@ -15,4 +15,5 @@
     <color name="green_dark">#388E3C</color> <!-- Dark green text -->
     <color name="green_accent">#4CAF50</color> <!-- Accent green for dynamic values -->
     <color name="white">#FFFFFF</color> <!-- CardView background -->
+    <color name="red">#FF0000</color><!-- Alert color-->
 </resources>
