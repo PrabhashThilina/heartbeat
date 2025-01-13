@@ -63,11 +63,11 @@ The machine learning algorithms rely on a dataset for training and testing. The 
 
 ## Authors
 
-- **Dilakshan Chamikara** GitHub: [DilakshanChamikara](https://github.com/DilakshanChamikara)
+- **Dilakshan Chamikara** | GitHub: [DilakshanChamikara](https://github.com/DilakshanChamikara)
 
-- **Thilina Prabhash** GitHub: [PrabhashThilina](https://github.com/PrabhashThilina)
+- **Thilina Prabhash** | GitHub: [PrabhashThilina](https://github.com/PrabhashThilina)
 
-- **Kulani Nimaya** GitHub: [kulani-nimaya](https://github.com/kulani-nimaya)
+- **Kulani Nimaya** | GitHub: [kulani-nimaya](https://github.com/kulani-nimaya)
 
 ---
 
