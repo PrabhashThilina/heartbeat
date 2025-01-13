@@ -1,4 +1,4 @@
-# Health Monitoring System
+# Heartbeat: Health Monitoring System
 
 This repository contains a Python-based health monitoring system leveraging APIs, MQTT, and machine learning to process and predict patient health status based on sensor inputs and stored data.
 

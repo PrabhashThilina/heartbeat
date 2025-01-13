@@ -31,7 +31,7 @@ This project is organized into three main components:
 
 1. Clone the repository:
    ```bash
-   git clone [Your GitHub Repository Link]
+   git clone https://github.com/PrabhashThilina/heartbeat.git
    ```
 
 2. Navigate to the respective folders for setup:
@@ -61,7 +61,16 @@ The machine learning algorithms rely on a dataset for training and testing. The 
 
 ---
 
-## Repository Link
+## Authors
 
-[GitHub Repository](https://github.com/PrabhashThilina/heartbeat.git)
+- **Dilakshan Chamikara**
+- GitHub: [DilakshanChamikara](https://github.com/DilakshanChamikara)
+
+- **Thilina Prabhash**
+- GitHub: [PrabhashThilina](https://github.com/PrabhashThilina)
+
+- **Kulani Nimaya**
+- GitHub: [kulani-nimaya](https://github.com/kulani-nimaya)
+
+---
 
